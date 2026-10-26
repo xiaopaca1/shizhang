@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#135243">
+  <title>拾账 · 简单记账</title>
+  <meta name="description" content="拾账 —— 一款轻巧、离线可用的个人记账应用。">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="拾账">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23135845'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='%23fff' font-family='serif'%3E%E6%8B%BE%3C/text%3E%3C/svg%3E">
+  <script>
+    // 首屏先应用主题，避免深色模式下闪白
+    (function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('shizhang.v1') || '{}');
+        var t = saved.theme;
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', t === 'dark' ? '#111513' : '#f4f1e9');
+      } catch (e) { /* 忽略 */ }
+
+      // file:// 下浏览器无法读取 manifest，会报 CORS；只在 HTTP(S) 下挂载
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        var link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = 'manifest.json';
+        document.head.appendChild(link);
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-home" viewBox="0 0 24 24">
+    <path d="M4 10.4 12 4l8 6.4V19a1.6 1.6 0 0 1-1.6 1.6H15v-6H9v6H5.6A1.6 1.6 0 0 1 4 19v-8.6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24">
+    <path d="M8 6h12M8 12h12M8 18h12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    <circle cx="4.2" cy="6" r="1.2" fill="currentColor"/><circle cx="4.2" cy="12" r="1.2" fill="currentColor"/><circle cx="4.2" cy="18" r="1.2" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24">
+    <path d="M12 3a9 9 0 1 0 9 9h-9V3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+    <path d="M15 3.6A9 9 0 0 1 20.4 9H15V3.6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="6.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <path d="m16 16 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6.5 6.5 11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24">
+    <path d="M4.5 7h15M9.5 7V5.2c0-.7.6-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2V7M6.6 7l.8 11.4c.05.9.8 1.6 1.7 1.6h5.8c.9 0 1.65-.7 1.7-1.6L17.4 7M10.2 10.5v5.6M13.8 10.5v5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24">
+    <path d="M4.5 19.5h4L19 9a2.3 2.3 0 0 0-3.2-3.2L5.3 16.3l-.8 3.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="m14.6 7.2 2.9 2.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-back" viewBox="0 0 24 24">
+    <path d="M9 5 3.5 12 9 19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M4.2 12H14c3.6 0 6.5 2.4 6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24">
+    <rect x="3.8" y="5.5" width="16.4" height="15" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <path d="M3.8 10h16.4M8.2 3.5v3.6M15.8 3.5v3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24">
+    <path d="M4 8.2V6.8C4 5.8 4.8 5 5.8 5h10.9c1 0 1.8.8 1.8 1.8v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    <rect x="4" y="8.2" width="16.5" height="10.3" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <circle cx="16.3" cy="13.3" r="1.1" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10m0 0 3.6-3.6M12 14l-3.6-3.6M5 17.5V19a1.6 1.6 0 0 0 1.6 1.6h10.8A1.6 1.6 0 0 0 19 19v-1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V5m0 0 3.6 3.6M12 5 8.4 8.6M5 17.5V19a1.6 1.6 0 0 0 1.6 1.6h10.8A1.6 1.6 0 0 0 19 19v-1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="topbar">
+   <div class="topbar-inner">
+    <div class="topbar-left">
+      <a class="brand" href="#home" data-action="nav" data-view="home" aria-label="拾账 · 返回总览">
+        <span class="brand-mark">拾</span>
+        <span class="brand-text"><strong>拾账</strong><small>简单记账</small></span>
+      </a>
+      <label class="book-switch" title="切换账本">
+        <span class="book-switch-icon" aria-hidden="true">📒</span>
+        <select id="bookSelect" class="book-select" aria-label="切换账本"></select>
+      </label>
+    </div>
+
+    <nav class="tabs" aria-label="主导航">
+      <button class="tab" data-action="nav" data-view="home">总览</button>
+      <button class="tab" data-action="nav" data-view="records">明细</button>
+      <button class="tab" data-action="nav" data-view="stats">统计</button>
+      <button class="tab" data-action="nav" data-view="settings">设置</button>
+    </nav>
+
+    <button class="btn btn-primary top-add" data-action="add" data-type="expense">
+      <svg class="icon"><use href="#i-plus"/></svg>记一笔
+    </button>
+   </div>
+  </header>
+
+  <main id="main">
+    <!-- 总览 -->
+    <section class="view" id="view-home" data-view="home" aria-labelledby="homeHeading">
+      <h1 id="homeHeading" class="sr-only">总览</h1>
+      <div id="demoBanner"></div>
+
+      <div class="monthbar">
+        <div class="month-nav">
+          <button class="icon-btn" data-action="month-prev" aria-label="上个月"><svg class="icon"><use href="#i-left"/></svg></button>
+          <div class="month-title"><strong id="monthTitle">2026年10月</strong><span class="tag" id="monthTag">本月</span></div>
+          <button class="icon-btn" data-action="month-next" aria-label="下个月"><svg class="icon"><use href="#i-right"/></svg></button>
+        </div>
+        <button class="link" data-action="month-today" id="monthTodayBtn">回到本月</button>
+      </div>
+
+      <article class="hero">
+        <div class="hero-head">
+          <span>结余</span>
+          <span class="hero-badge" id="heroBadge">10 月</span>
+        </div>
+        <div class="hero-body">
+          <div class="hero-left">
+            <div class="hero-amount" id="heroBalance">¥0.00</div>
+            <div class="hero-meta">
+              <div><span>支出</span><strong id="heroExpense">¥0.00</strong></div>
+              <div><span>收入</span><strong id="heroIncome">¥0.00</strong></div>
+              <div><span>笔数</span><strong id="heroCount">0</strong></div>
+            </div>
+          </div>
+          <div class="hero-side">
+            <div class="hero-budget" id="heroBudget"></div>
+            <div class="hero-actions">
+              <button class="btn btn-light" data-action="add" data-type="expense"><svg class="icon"><use href="#i-plus"/></svg>记支出</button>
+              <button class="btn btn-light" data-action="add" data-type="income"><svg class="icon"><use href="#i-plus"/></svg>记收入</button>
+            </div>
+          </div>
+        </div>
+        <div class="hero-deco" aria-hidden="true"></div>
+      </article>
+
+      <div class="home-grid">
+        <section class="card">
+          <div class="card-head">
+            <h2>最近记录</h2>
+            <button class="link" data-action="nav" data-view="records">全部明细 ›</button>
+          </div>
+          <div id="recentList" class="entry-list"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>花在哪儿</h2>
+            <span class="muted small" id="breakdownSub"></span>
+          </div>
+          <div id="breakdownList" class="breakdown"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- 明细 -->
+    <section class="view" id="view-records" data-view="records" hidden aria-labelledby="recordsHeading">
+      <div class="page-head">
+        <div>
+          <h1 id="recordsHeading">明细</h1>
+          <p class="muted" id="recordsSub">共 0 笔</p>
+        </div>
+      </div>
+
+      <section class="card filters" aria-label="筛选">
+        <label class="search-wrap">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input id="searchInput" type="search" placeholder="搜索备注、分类或金额" autocomplete="off" aria-label="搜索记录">
+        </label>
+        <div class="filter-row">
+          <div class="segmented" id="typeFilter" role="group" aria-label="按收支类型筛选">
+            <button class="seg active" data-filter-type="all">全部</button>
+            <button class="seg" data-filter-type="expense">支出</button>
+            <button class="seg" data-filter-type="income">收入</button>
+          </div>
+          <select id="catFilter" class="select" aria-label="按分类筛选"><option value="all">全部分类</option></select>
+          <select id="monthFilter" class="select" aria-label="按月份筛选"><option value="all">全部月份</option></select>
+        </div>
+      </section>
+
+      <div id="recordsList" class="records"></div>
+    </section>
+
+    <!-- 统计 -->
+    <section class="view" id="view-stats" data-view="stats" hidden aria-labelledby="statsHeading">
+      <div class="page-head">
+        <div>
+          <h1 id="statsHeading">统计</h1>
+          <p class="muted" id="statsSub">看清钱的去向</p>
+        </div>
+        <div class="month-nav compact">
+          <button class="icon-btn" data-action="month-prev" aria-label="上个月"><svg class="icon"><use href="#i-left"/></svg></button>
+          <strong id="statsMonthTitle">2026年10月</strong>
+          <button class="icon-btn" data-action="month-next" aria-label="下个月"><svg class="icon"><use href="#i-right"/></svg></button>
+        </div>
+      </div>
+
+      <div class="stat-cards">
+        <article class="stat-card">
+          <span>支出</span>
+          <strong id="statExpense">¥0.00</strong>
+          <small id="statExpenseNote">共 0 笔</small>
+        </article>
+        <article class="stat-card">
+          <span>收入</span>
+          <strong id="statIncome">¥0.00</strong>
+          <small id="statIncomeNote">共 0 笔</small>
+        </article>
+        <article class="stat-card">
+          <span>日均支出</span>
+          <strong id="statDaily">¥0.00</strong>
+          <small id="statDailyNote">按已过天数计算</small>
+        </article>
+      </div>
+
+      <div class="stats-grid">
+        <section class="card chart-card">
+          <div class="card-head">
+            <h2>支出构成</h2>
+            <span class="muted small" id="donutSub"></span>
+          </div>
+          <div class="donut-wrap">
+            <div class="donut-box" id="donut"></div>
+            <div class="legend" id="donutLegend"></div>
+          </div>
+        </section>
+
+        <section class="card chart-card">
+          <div class="card-head">
+            <h2>近 6 个月趋势</h2>
+            <div class="legend-inline">
+              <span><i class="dot exp"></i>支出</span>
+              <span><i class="dot inc"></i>收入</span>
+            </div>
+          </div>
+          <div id="trend" class="trend"></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>支出排行</h2>
+          <span class="muted small" id="rankSub">本月</span>
+        </div>
+        <div id="rankList" class="rank"></div>
+      </section>
+    </section>
+
+    <!-- 设置 -->
+    <section class="view" id="view-settings" data-view="settings" hidden aria-labelledby="settingsHeading">
+      <div class="page-head">
+        <div>
+          <h1 id="settingsHeading">设置</h1>
+          <p class="muted">让记账更合你的习惯</p>
+        </div>
+      </div>
+
+      <section class="card setting-card" id="bookCard">
+        <div class="setting-head">
+          <div>
+            <h2>账本</h2>
+            <p class="muted">不同账本的记录彼此独立，适合日常、旅行、家庭分账等场景。</p>
+          </div>
+          <button class="btn btn-sm" data-action="book-new">＋ 新建</button>
+        </div>
+        <div id="bookList" class="book-list"></div>
+      </section>
+
+      <section class="card setting-card">
+        <h2>每月预算 <span class="muted small" id="budgetBookName"></span></h2>
+        <p class="muted">设置后，总览会显示本月预算的使用进度。填 0 或留空即关闭预算。</p>
+        <div class="inline-form">
+          <span class="prefix">¥</span>
+          <input id="budgetInput" type="number" min="0" max="9999999" step="100" inputmode="numeric" placeholder="例如 3000" aria-label="每月预算金额">
+          <button class="btn btn-primary" data-action="save-budget">保存</button>
+        </div>
+      </section>
+
+      <section class="card setting-card" id="catCard">
+        <div class="setting-head">
+          <div>
+            <h2>分类</h2>
+            <p class="muted">内置分类固定；你可以添加自己的分类，图标和颜色都可以选。</p>
+          </div>
+          <button class="btn btn-sm" data-action="cat-add">＋ 添加</button>
+        </div>
+        <div class="segmented cat-tabs" id="catTabs" role="group" aria-label="收支分类">
+          <button class="seg active" data-cat-tab="expense">支出分类</button>
+          <button class="seg" data-cat-tab="income">收入分类</button>
+        </div>
+        <div id="catList" class="cat-manage"></div>
+      </section>
+
+      <section class="card setting-card">
+        <h2>偏好</h2>
+        <div class="setting-row">
+          <div><strong>主题</strong><span>浅色、深色，或跟随系统</span></div>
+          <div class="segmented" id="themeSwitch" role="group" aria-label="主题">
+            <button class="seg" data-theme-option="auto">自动</button>
+            <button class="seg" data-theme-option="light">浅色</button>
+            <button class="seg" data-theme-option="dark">深色</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div><strong>默认账户</strong><span>记账时默认选中的支付方式</span></div>
+          <select id="accountSelect" class="select" aria-label="默认账户"></select>
+        </div>
+      </section>
+
+      <section class="card setting-card">
+        <h2>数据</h2>
+        <p class="muted">所有数据只保存在这台设备的浏览器里，不会上传到任何服务器。换设备前建议先备份。</p>
+        <div class="btn-row">
+          <button class="btn" data-action="export-csv"><svg class="icon"><use href="#i-download"/></svg>导出 CSV</button>
+          <button class="btn" data-action="backup"><svg class="icon"><use href="#i-download"/></svg>备份 JSON</button>
+          <button class="btn" data-action="restore"><svg class="icon"><use href="#i-upload"/></svg>恢复备份</button>
+          <button class="btn btn-danger-ghost" data-action="clear-all">清空当前账本</button>
+        </div>
+        <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+        <div class="setting-row demo-row">
+          <div>
+            <strong>示例账本</strong>
+            <span id="demoHint">想先看看效果？会新建一个独立的示例账本，不影响现有记录</span>
+          </div>
+          <button class="btn btn-sm" data-action="load-demo" id="demoLoadBtn">载入示例</button>
+        </div>
+      </section>
+
+      <section class="card setting-card" id="installCard">
+        <h2>安装到桌面</h2>
+        <p class="muted" id="installText">安装后可以像 App 一样从桌面直接打开，并支持离线使用。</p>
+        <div class="btn-row install-row">
+          <button class="btn btn-primary" data-action="install-app" id="installBtn" hidden>安装到桌面</button>
+          <span class="install-status" id="installStatus"></span>
+        </div>
+      </section>
+
+      <section class="card setting-card about">
+        <div class="about-row">
+          <span class="brand-mark small">拾</span>
+          <div>
+            <strong>拾账 <span class="muted">v2.0</span></strong>
+            <span>把每一笔，记得清楚。数据存于本机，离线可用。</span>
+          </div>
+        </div>
+        <p class="muted small" id="aboutStats">共 0 条记录</p>
+      </section>
+    </section>
+  </main>
+
+  <nav class="bottomnav" aria-label="底部导航">
+    <button data-action="nav" data-view="home" aria-label="总览">
+      <svg class="icon"><use href="#i-home"/></svg><span>总览</span>
+    </button>
+    <button data-action="nav" data-view="records" aria-label="明细">
+      <svg class="icon"><use href="#i-list"/></svg><span>明细</span>
+    </button>
+    <button class="nav-add" data-action="add" data-type="expense" aria-label="记一笔">
+      <span class="nav-add-circle"><svg class="icon"><use href="#i-plus"/></svg></span>
+    </button>
+    <button data-action="nav" data-view="stats" aria-label="统计">
+      <svg class="icon"><use href="#i-chart"/></svg><span>统计</span>
+    </button>
+    <button data-action="nav" data-view="settings" aria-label="设置">
+      <svg class="icon"><use href="#i-gear"/></svg><span>设置</span>
+    </button>
+  </nav>
+</div>
+
+<!-- 记一笔 / 编辑 -->
+<div class="modal" id="composer" aria-hidden="true">
+  <div class="modal-backdrop" data-action="close-composer"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="composerTitle" tabindex="-1">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-scroll">
+      <div class="sheet-head">
+        <button class="icon-btn" data-action="close-composer" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
+        <div class="segmented type-switch" id="composerType" role="group" aria-label="收支类型">
+          <button class="seg active" data-draft-type="expense">支出</button>
+          <button class="seg" data-draft-type="income">收入</button>
+        </div>
+        <button class="icon-btn danger" data-action="delete-entry" id="composerDelete" aria-label="删除这笔记录" hidden><svg class="icon"><use href="#i-trash"/></svg></button>
+      </div>
+      <h2 id="composerTitle" class="sr-only">记一笔</h2>
+
+      <div class="amount-row">
+        <span class="amount-currency">¥</span>
+        <span class="amount-value" id="amountValue">0.00</span>
+      </div>
+
+      <div class="meta-row">
+        <label class="meta-chip">
+          <input type="date" id="draftDate" aria-label="日期">
+        </label>
+        <label class="meta-chip">
+          <svg class="icon"><use href="#i-wallet"/></svg>
+          <select id="draftAccount" aria-label="账户"></select>
+        </label>
+      </div>
+
+      <div class="cat-grid" id="catGrid" role="group" aria-label="选择分类"></div>
+
+      <input class="note-input" id="draftNote" type="text" maxlength="30" placeholder="添加备注（可选）" autocomplete="off" aria-label="备注">
+    </div>
+
+    <div class="keypad" id="keypad">
+      <button class="key" data-key="1">1</button>
+      <button class="key" data-key="2">2</button>
+      <button class="key" data-key="3">3</button>
+      <button class="key" data-key="4">4</button>
+      <button class="key" data-key="5">5</button>
+      <button class="key" data-key="6">6</button>
+      <button class="key" data-key="7">7</button>
+      <button class="key" data-key="8">8</button>
+      <button class="key" data-key="9">9</button>
+      <button class="key" data-key=".">.</button>
+      <button class="key" data-key="0">0</button>
+      <button class="key" data-key="back" aria-label="退格"><svg class="icon"><use href="#i-back"/></svg></button>
+    </div>
+    <button class="btn btn-primary done-btn" data-action="save-entry">完成</button>
+  </div>
+</div>
+
+<!-- 确认对话框 -->
+<div class="modal confirm-modal" id="confirm" aria-hidden="true">
+  <div class="modal-backdrop" data-action="close-confirm"></div>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg" tabindex="-1">
+    <h2 id="confirmTitle">确认</h2>
+    <p id="confirmMsg"></p>
+    <input id="confirmInput" class="dialog-input" type="text" hidden>
+    <div class="dialog-actions">
+      <button class="btn" data-action="close-confirm">取消</button>
+      <button class="btn btn-primary" data-action="confirm-ok" id="confirmOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 分类编辑 -->
+<div class="modal cat-modal" id="catEditor" aria-hidden="true">
+  <div class="modal-backdrop" data-action="close-cat-editor"></div>
+  <div class="dialog cat-dialog" role="dialog" aria-modal="true" aria-labelledby="catEditorTitle" tabindex="-1">
+    <h2 id="catEditorTitle">添加分类</h2>
+    <p class="cat-sub" id="catEditorSub">支出分类</p>
+    <label class="cat-field">
+      <span>名称</span>
+      <input id="catName" type="text" maxlength="8" placeholder="例如：宠物" autocomplete="off">
+    </label>
+    <div class="cat-field">
+      <span>图标</span>
+      <div class="emoji-grid" id="catIcons" role="group" aria-label="选择图标"></div>
+    </div>
+    <div class="cat-field">
+      <span>颜色</span>
+      <div class="color-grid" id="catColors" role="group" aria-label="选择颜色"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" data-action="close-cat-editor">取消</button>
+      <button class="btn btn-primary" data-action="save-cat">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<noscript><div class="noscript">拾账需要开启 JavaScript 才能使用。</div></noscript>
+
+<script src="app.js"></script>
+</body>
+</html>
